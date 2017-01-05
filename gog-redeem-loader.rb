@@ -6,12 +6,13 @@ require "optparse"
 @sort_by = :alpha
 @search_for = nil
 @force = false
+@search_mode = :title
 
 def parseOptions
   OptionParser.new do |o|
     o.on("-c", "--code CODE", "Required. Specify your redeem CODE.") {|code| @key = code}
-    o.on("-s", "--sortby SORT", "Sort method. Can be alpha or price. Defaults to alpha.") {|sort| @sort_by = sort.to_sym}
-    o.on("-n", "--name NAME", "Only print the games with NAME in their title.") {|name| @search_for = name}
+    o.on("-s", "--sortby SORT", "Sort method. Can be alpha, price or rating. Defaults to alpha.") {|sort| @sort_by = sort.to_sym}
+    o.on("-n", "--name NAME", "Only print the games with NAME in their title.") {|name| @search_for = name; @search_mode = :title}
     o.on("-f", "--force", "Force loading games from server. Skips cached results.") {|force| @force = force }
     o.on("-h", "--help", "Print this help.") {|h| puts o; exit;}
     o.parse!
@@ -77,14 +78,23 @@ def printGamesSorted(games, sort_method)
   when :price
     puts "Page \t Price \t\t Name"
     puts games.sort_by{|g| g["title"]}.sort_by{|g| g["price"]["baseAmount"]}.map{|g| "#{g["page"]} \t #{g["price"]["baseAmount"]} #{g["price"]["symbol"]} \t #{g["title"]} \n"}
+  when :rating
+    puts "Page \t Rating \t Name"
+    puts games.sort_by{|g| g["title"]}.sort_by{|g| g["averageReviewScore"]}.map{|g| "#{g["page"]} \t #{g["averageReviewScore"]} \t\t #{g["title"]} \n"}
   else
     puts "Page \t Name"
     puts games.sort_by{|g| g["title"]}.map{|g| "#{g["page"]} \t #{g["title"]} \n"}
   end
 end
 
-def printGamesSearch(games, search_string)
-  games = games.select{|g| g["title"].downcase.include?(search_string.downcase)}
+def printGamesSearch(games, search_string, search_mode)
+  # if we add more searches..
+  case (search_mode)
+  when :title
+    games = games.select{|g| g["title"].downcase.include?(search_string.downcase)}
+  else
+    games = games.select{|g| g["title"].downcase.include?(search_string.downcase)}
+  end
   printGamesSorted(games, :alpha)
 end
 
@@ -110,7 +120,7 @@ def main
   # output
   puts "INFO: Results:" unless loaded_by_cache
   unless @search_for.nil?
-    printGamesSearch(games, @search_for)
+    printGamesSearch(games, @search_for, @search_mode)
   else
     printGamesSorted(games, @sort_by)
   end

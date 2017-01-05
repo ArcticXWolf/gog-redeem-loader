@@ -17,15 +17,43 @@ First you need to go to the redeem page and once solve the captcha there.
 Then execute the script via command line:
 
 ```
-ruby gog-redeem-loader.rb -c CODE
+$ ruby gog-redeem-loader.rb -c CODE
 ```
 
 You need to specify at least the option "-c", as the script will need your redeem code to only load the games you are allowed to choose from.
 
 For other options run
 ```
-ruby gog-redeem-loader.rb -h
+$ ruby gog-redeem-loader.rb -h
+Usage: gog-redeem-loader [options]
+    -c, --code CODE                  Required. Specify your redeem CODE.
+    -s, --sortby SORT                Sort method. Can be alpha, price or rating. Defaults to alpha.
+    -n, --name NAME                  Only print the games with NAME in their title.
+    -f, --force                      Force loading games from server. Skips cached results.
+    -h, --help                       Print this help.
 ```
+The script caches the game list into a file called games.cache-CODE, so you do not stress the GOG servers too much.
+If you want to refresh your cache, use the force option.
+
+If you want to search on your own (and you are able to write some ruby code), start an irb console and load in the cache file:
+
+```
+$ irb
+irb(main):001:0> games = Marshal.load(File.read("games.cache-CODE"))
+...
+irb(main):005:0> puts games.select{|g| g["price"]["baseAmount"] == "5.99"}.map{|g|g["title"]+"\n"}
+Zombie Night Terror Special Edition Upgrade
+Hyperdimension Neptunia Re;Birth1 - DLC pack
+Bombshell Digital Deluxe Edition Upgrade
+BIT.TRIP Runner Soundtrack
+BIT.TRIP BEAT Soundtrack
+BIT.TRIP CORE Soundtrack
+BIT.TRIP VOID Soundtrack
+BIT.TRIP FATE Soundtrack
+BIT.TRIP FLUX Soundtrack
+1979 Revolution: Black Friday - Original Soundtrack
+```
+Or all other calls you can imagine. If you use this, please add this search to the loader with an own option and issue a pull request, so others can benefit from it :)
 
 ## Examples
 
@@ -50,6 +78,11 @@ $ ruby gog-redeem-loader.rb -c CODE
 ### Print all games sorted by price
 ```
 $ ruby gog-redeem-loader.rb -c CODE -s price
+```
+
+### Print all games sorted by average review score
+```
+$ ruby gog-redeem-loader.rb -c CODE -s rating
 ```
 
 ## Contribute
