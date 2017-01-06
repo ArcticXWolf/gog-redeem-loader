@@ -29,6 +29,7 @@ Usage: gog-redeem-loader [options]
     -c, --code CODE                  Required. Specify your redeem CODE.
     -s, --sortby SORT                Sort method. Can be alpha, price or rating. Defaults to alpha.
     -n, --name NAME                  Only print the games with NAME in their title.
+    -d, --dlc                        Also include DLCs or other bonus like soundtracks.
     -f, --force                      Force loading games from server. Skips cached results.
     -h, --help                       Print this help.
 ```

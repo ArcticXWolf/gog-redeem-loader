@@ -2,23 +2,27 @@ require "net/http"
 require "json"
 require "optparse"
 
-@key = nil
-@sort_by = :alpha
-@search_for = nil
-@force = false
-@search_mode = :title
+@options = {
+  :key => nil,
+  :sort_by => :alpha,
+  :search_mode => :title,
+  :search_for => nil,
+  :force => false,
+  :dlc => false
+}
 
 def parseOptions
   OptionParser.new do |o|
-    o.on("-c", "--code CODE", "Required. Specify your redeem CODE.") {|code| @key = code}
-    o.on("-s", "--sortby SORT", "Sort method. Can be alpha, price or rating. Defaults to alpha.") {|sort| @sort_by = sort.to_sym}
-    o.on("-n", "--name NAME", "Only print the games with NAME in their title.") {|name| @search_for = name; @search_mode = :title}
-    o.on("-f", "--force", "Force loading games from server. Skips cached results.") {|force| @force = force }
+    o.on("-c", "--code CODE", "Required. Specify your redeem CODE.") {|code| @options[:key] = code}
+    o.on("-s", "--sortby SORT", "Sort method. Can be alpha, price or rating. Defaults to alpha.") {|sort| @options[:sort_by] = sort.to_sym}
+    o.on("-n", "--name NAME", "Only print the games with NAME in their title.") {|name| @options[:search_for] = name; @options[:search_mode] = :title}
+    o.on("-d", "--dlc", "Also include DLCs or other bonus like soundtracks.") {|dlc| @options[:dlc] = dlc }
+    o.on("-f", "--force", "Force loading games from server. Skips cached results.") {|force| @options[:force] = force }
     o.on("-h", "--help", "Print this help.") {|h| puts o; exit;}
     o.parse!
   end
 
-  if @key.nil?
+  if @options[:key].nil?
     puts "ERRO: You must specify a redeem code."
     exit
   end
@@ -73,29 +77,34 @@ def loadCache(filename)
   end
 end
 
-def printGamesSorted(games, sort_method)
-  case (sort_method)
+def printGamesSorted(games, options)
+  # filter out DLCs
+  games = games.select{|g| g["type"] != 3} unless options[:dlc]
+
+  case (options[:sort_by])
   when :price
     puts "Page \t Price \t\t Name"
-    puts games.sort_by{|g| g["title"]}.sort_by{|g| g["price"]["baseAmount"]}.map{|g| "#{g["page"]} \t #{g["price"]["baseAmount"]} #{g["price"]["symbol"]} \t #{g["title"]} \n"}
+    puts games.sort_by{|g| g["title"].downcase}.sort_by{|g| g["price"]["baseAmount"]}.map{|g| "#{g["page"]} \t #{g["price"]["baseAmount"]} #{g["price"]["symbol"]} \t #{g["title"]} \n"}
+    puts "Total: #{games.count} games"
   when :rating
     puts "Page \t Rating \t Name"
-    puts games.sort_by{|g| g["title"]}.sort_by{|g| g["averageReviewScore"]}.map{|g| "#{g["page"]} \t #{g["averageReviewScore"]} \t\t #{g["title"]} \n"}
+    puts games.sort_by{|g| g["title"].downcase}.sort_by{|g| g["averageReviewScore"]}.map{|g| "#{g["page"]} \t #{g["averageReviewScore"]} \t\t #{g["title"]} \n"}
+    puts "Total: #{games.count} games"
   else
     puts "Page \t Name"
-    puts games.sort_by{|g| g["title"]}.map{|g| "#{g["page"]} \t #{g["title"]} \n"}
+    puts games.sort_by{|g| g["title"].downcase}.map{|g| "#{g["page"]} \t #{g["title"]} \n"}
+    puts "Total: #{games.count} games"
   end
 end
 
-def printGamesSearch(games, search_string, search_mode)
+def printGamesSearch(games, options)
   # if we add more searches..
-  case (search_mode)
-  when :title
-    games = games.select{|g| g["title"].downcase.include?(search_string.downcase)}
-  else
-    games = games.select{|g| g["title"].downcase.include?(search_string.downcase)}
-  end
-  printGamesSorted(games, :alpha)
+  #case (options[:search_mode])
+  #when :...
+  #else
+    games = games.select{|g| g["title"].downcase.include?(options[:search_for].downcase)}
+  #end
+  printGamesSorted(games, {:sort_method => :alpha})
 end
 
 def main
@@ -104,25 +113,25 @@ def main
   games = nil
 
   # load from cache
-  games = loadCache("games.cache-"+@key) unless @force
+  games = loadCache("games.cache-"+@options[:key]) unless @options[:force]
   loaded_by_cache = true
 
   # load from server
   if games.nil?
     puts "INFO: Load games from server."
-    games = loadGames(@key)
+    games = loadGames(@options[:key])
     loaded_by_cache = false
   end
 
   exit if games.nil?
-  cacheResults("games.cache-"+@key, games) unless loaded_by_cache
+  cacheResults("games.cache-"+@options[:key], games) unless loaded_by_cache
 
   # output
   puts "INFO: Results:" unless loaded_by_cache
-  unless @search_for.nil?
-    printGamesSearch(games, @search_for, @search_mode)
+  unless @options[:search_for].nil?
+    printGamesSearch(games, @options)
   else
-    printGamesSorted(games, @sort_by)
+    printGamesSorted(games, @options)
   end
 end
 
